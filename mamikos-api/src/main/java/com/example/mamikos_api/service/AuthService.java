@@ -2,11 +2,13 @@ package com.example.mamikos_api.service;
 
 import com.example.mamikos_api.dto.LoginRequest;
 import com.example.mamikos_api.dto.LoginResponse;
+import com.example.mamikos_api.dto.ProfileResponseDto;
 import com.example.mamikos_api.dto.RegisterRequest;
 import com.example.mamikos_api.dto.UpdateProfileRequest;
 import com.example.mamikos_api.entity.Role;
 import com.example.mamikos_api.entity.User;
 import com.example.mamikos_api.jwt.JwtService;
+import com.example.mamikos_api.mapper.UserMapper;
 import com.example.mamikos_api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,6 +24,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final UserMapper userMapper;
 
     public LoginResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -73,7 +76,7 @@ public class AuthService {
                 .build();
     }
 
-    public User updateProfile(User currentUser, UpdateProfileRequest request) {
+    public ProfileResponseDto updateProfile(User currentUser, UpdateProfileRequest request) {
         currentUser.setNamaLengkap(request.getNamaLengkap());
 
         if (request.getUsername() != null && !request.getUsername().isEmpty()) {
@@ -93,6 +96,7 @@ public class AuthService {
             currentUser.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
-        return userRepository.save(currentUser);
+        User updatedUser = userRepository.save(currentUser);
+        return userMapper.toProfileResponseDto(updatedUser);
     }
 }

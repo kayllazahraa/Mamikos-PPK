@@ -12,6 +12,7 @@ import com.example.mamikos_api.repository.OrderRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -58,6 +59,7 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public OrderResponse updateOrderStatus(Long orderId, String status, User pemilik) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Order tidak ditemukan dengan ID: " + orderId));
@@ -71,6 +73,20 @@ public class OrderService {
             newStatus = OrderStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Status tidak valid. Gunakan 'PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'.");
+        }
+
+        //ubah status ketersediaan kos
+        Kosan kosan = order.getKosan();
+
+        if (newStatus == OrderStatus.APPROVED) {
+            if (!kosan.getTersedia()) {
+                throw new IllegalStateException("Kosan ini sudah tidak tersedia (mungkin sudah dipesan orang lain).");
+            }
+            kosan.setTersedia(false);
+            kosanRepository.save(kosan);
+        } else if (newStatus == OrderStatus.REJECTED || newStatus == OrderStatus.CANCELLED) {
+            kosan.setTersedia(true);
+            kosanRepository.save(kosan);
         }
 
         order.setStatus(newStatus);

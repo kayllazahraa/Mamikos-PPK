@@ -5,8 +5,10 @@ import com.example.mamikos_api.dto.UlasanResponse;
 import com.example.mamikos_api.entity.Kosan;
 import com.example.mamikos_api.entity.Ulasan;
 import com.example.mamikos_api.entity.User;
+import com.example.mamikos_api.entity.OrderStatus;
 import com.example.mamikos_api.mapper.UlasanMapper;
 import com.example.mamikos_api.repository.KosanRepository;
+import com.example.mamikos_api.repository.OrderRepository;
 import com.example.mamikos_api.repository.UlasanRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class UlasanService {
     private final UlasanRepository ulasanRepository;
     private final KosanRepository kosanRepository;
     private final UlasanMapper ulasanMapper;
+    private final OrderRepository orderRepository;
 
     public List<UlasanResponse> getUlasanByKosan(Long kosanId) {
         if (!kosanRepository.existsById(kosanId)) {
@@ -37,6 +40,17 @@ public class UlasanService {
     public UlasanResponse createUlasan(Long kosanId, UlasanRequest request, User user) {
         Kosan kosan = kosanRepository.findById(kosanId)
                 .orElseThrow(() -> new EntityNotFoundException("Kosan tidak ditemukan dengan ID: " + kosanId));
+
+        //periksa apakah user pernah memesan kos dengan status APPROVED
+        boolean hasApprovedOrder = orderRepository.existsByUserIdAndKosanIdAndStatus(
+                user.getId(),
+                kosanId,
+                OrderStatus.APPROVED
+        );
+
+        if (!hasApprovedOrder) {
+            throw new SecurityException("Anda hanya dapat memberi ulasan pada kosan yang pesanannya telah disetujui.");
+        }
 
         Ulasan ulasan = Ulasan.builder()
                 .rating(request.getRating())
